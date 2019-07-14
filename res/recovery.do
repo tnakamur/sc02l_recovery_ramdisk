@@ -16,14 +16,28 @@ on init-recovery
 
 on init-history
 # Make command history file.
+#   mount -f /cache
+
+    df /efs
+    mkdir -f radio system 0771 /efs/recovery
+    touch -f /efs/recovery/history
+
+#   echo "+ [<log_prefix>]" >> /efs/recovery/history
+#   cat -f /cache/recovery/command >> /efs/recovery/history
+
+#   cp -y -f -v /efs/recovery/history /cache/recovery/last_history
+#   chown -f system system /cache/recovery/last_history
+
+on init-history-command
+# write misc command to history file
     mount -f /cache
 
     df /efs
     mkdir -f radio system 0771 /efs/recovery
     touch -f /efs/recovery/history
 
-    echo "+ [<log_prefix>]" >> /efs/recovery/history
-    cat -f /cache/recovery/command >> /efs/recovery/history
+    echo "[BCB] : <recovery_command>" >> /efs/recovery/history
+    #cat -f /cache/recovery/command >> /efs/recovery/history
 
     cp -y -f -v /efs/recovery/history /cache/recovery/last_history
     chown -f system system /cache/recovery/last_history
@@ -47,12 +61,12 @@ on checking-log
 on resizing-data
     mount --option=ro /system
 
-    mount /data
+    exec -f "/system/bin/e2fsck -y -f <dev_node:/data>"
+    mount --option=ro /data
     find -v --print=/tmp/data.list /data
     unmount /data
 
     loop_begin 2
-        exec -f "/system/bin/e2fsck -y -f <dev_node:/data>"
         exec "/system/bin/resize2fs -R <footer_length> <dev_node:/data>"
     loop_end
 
@@ -61,7 +75,26 @@ on resizing-data
     verfiy_data <dev_node:/data> /data 5
     verfiy_data --size-from-file=/tmp/data.list
     unmount /data
-        
+
+# running --data_resizing-f2fs with the userdata binaray
+on resizing-data-f2fs
+    mount --option=ro /system
+
+    mount --option=ro /data
+    find -v --print=/tmp/data.list /data
+    unmount /data
+
+    loop_begin 2
+        exec -f "/system/bin/fsck.f2fs -y <dev_node:/data>"
+        exec "/system/bin/resize.f2fs -t <sector_size> <dev_node:/data>"
+    loop_end
+
+    mount --option=ro /data
+    df /data
+    verfiy_data <dev_node:/data> /data 5
+    verfiy_data --size-from-file=/tmp/data.list
+    unmount /data
+
 # only run command csc_factory
 on pre-multi-csc
     precondition define /carrier
@@ -244,20 +277,19 @@ on exec-delete-apn-changes
 on pre-exec-wipe-data
     echo "-- Start Factory Reset..."
     write -f /efs/recovery/currentlyFactoryReset "start wipe-data\n"
-    
-# @OMC(js523.park, Cloud Platform) : When omc binary is donwloaded, cp mps_code.dat -> omcnw_code.dat(request by PL(chulwoo73.kim) / RIL (sj.jin.jung)) [
+
+# @OMC : [
+# When omc binary is donwloaded, cp mps_code.dat -> omcnw_code.dat(request by PL(chulwoo73.kim) / RIL (sj.jin.jung)) [
 on omc_binary_download
     echo "-- omc_binary_download..."
     cp -y -f -v --with-fmode=0664 --with-owner=radio.system /efs/imei/mps_code.dat /efs/imei/omcnw_code.dat
-# ]
 
-# @OMC(my0718.jung, Cloud Platform) : Conditional deletion of salesCodeChanged flag file according to device type [
+# Conditional deletion of salesCodeChanged flag file according to device type 
 on delete_salesCodeChanged_flag
     echo "-- delete_salesCodeChanged_flag..."
     rm -f /efs/imei/salesCodeChanged
-# ]
 
-# @OMC(my0718.jung, Cloud Platform) : Delete omcnw_code.dat in case device is not OMC model. [
+# Delete omcnw_code.dat in case device is not OMC model. 
 on delete_omcnw_code
 #    mount -f /efs
     echo "-- delete_omcnw_code..."
@@ -265,7 +297,30 @@ on delete_omcnw_code
     rm -f -v /efs/imei/omcnw_code.dat
     ls /efs/imei/
 #    unmount /efs
-# ]
+
+# If device is omc device,  Auth. of /system/omc folder should be changed 751 because it is requested by vendor
+# But HWRDB / sipdb / res folders should be 755 because contents could be used. 
+on omc_permission
+    chmod -v -r --type=directory 0751 /system/omc/
+    chmod -v -r --type=directory 0755 /system/omc/sipdb/
+    chmod -v -r --type=directory 0755 /system/omc/HWRDB/
+
+on omc_sysconfig_permission
+    chmod -v -r --type=directory 0755 /system/omc/<salse_code>/etc/sysconfig/
+
+on omc_permissions_permission
+    chmod -v -r --type=directory 0755 /system/omc/<salse_code>/etc/permissions/
+
+on omc_sysconfig_permission_carrierid
+    chmod -v -r --type=directory 0755 /system/omc/<carrier_id>/etc/cid/sysconfig/
+
+on omc_permissions_permission_carrierid
+    chmod -v -r --type=directory 0755 /system/omc/<carrier_id>/etc/cid/permissions/
+
+on omc_res_permission
+    chmod -v -r --type=directory 0755 /system/omc/<salse_code>/res/
+
+# @OMC]
 
         
 on amazon_symlink_ATT
@@ -395,19 +450,6 @@ on omc_app_link
     ln -v -s -r --force-link -f /system/omc/common_app/app/ /system/app/
     ln -v -s -r --force-link -f /system/omc/common_app/priv-app/ /system/priv-app/
 
-# @OMC(js523.park, Cloud Platform) : If device is omc device,  Auth. of /system/omc folder should be changed 751 because it is requested by vendor
-# But HWRDB / sipdb / res folders should be 755 because contents could be used. [ 
-on omc_permission
-    chmod -v -r --type=directory 0751 /system/omc/
-    chmod -v -r --type=directory 0755 /system/omc/sipdb/
-    chmod -v -r --type=directory 0755 /system/omc/HWRDB/
-
-on omc_sysconfig_permission
-    chmod -v -r --type=directory 0755 /system/omc/<salse_code>/etc/sysconfig/
-
-on omc_res_permission
-    chmod -v -r --type=directory 0755 /system/omc/<salse_code>/res/
-# ]
 on hwr_symlink_no_bri
     echo "-- hwr_symlink_no_BRI..."
     ln -v -s -r --force-link -f /system/omc/VODB/ /system/VODB/

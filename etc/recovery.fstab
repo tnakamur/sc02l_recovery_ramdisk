@@ -37,6 +37,7 @@
 /dev/block/platform/13500000.dwmmc0/by-name/RADIO       /modem          emmc    defaults         recoveryonly
 /dev/block/platform/13500000.dwmmc0/by-name/CP_DEBUG    /cp_debug       emmc    default         recoveryonly
 /dev/block/mmcblk1p1                                    /sdcard         vfat    defaults         recoveryonly
+/dev/block/platform/13500000.dwmmc0/by-name/PARAM       /param          emmc    defaults         recoveryonly
 
 #FOR LDU
 /dev/block/platform/13500000.dwmmc0/by-name/HIDDEN      /preload        ext4    defaults         recoveryonly
