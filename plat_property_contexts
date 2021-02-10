@@ -740,3 +740,13 @@ persist.config.chimera.enable                  u:object_r:exported_system_prop:s
 
 # https://mobilerndhub.sec.samsung.net/its/browse/SEANDROID-4509
 io.branch.preinstall.apps.path                   u:object_r:exported_config_prop:s0
+
+# https://mobilerndhub.sec.samsung.net/its/browse/SEANDROID-4676
+ro.input.resampling                       u:object_r:system_prop:s0
+
+# https://mobilerndhub.sec.samsung.net/its/browse/SEANDROID-5188
+security.dsmsd.									u:object_r:dsmsd_prop:s0
+
+# https://mobilerndhub.sec.samsung.net/its/browse/SEANDROID-5132
+mhs.6g                  					u:object_r:vendor_mhs_prop:s0
+
